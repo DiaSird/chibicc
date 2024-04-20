@@ -1,0 +1,9 @@
+--pedantic-errors
+-I./include/
+-std=c11
+-Wall
+-Wextra
+-Wno-sign-compare
+-Wno-unknown-pragmas
+-Wno-unused
+-Wno-unused-parameter
