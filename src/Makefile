@@ -1,26 +1,25 @@
 # CC = gcc
 # CC = icx
+
 CFLAGS=-std=c11 -g -fno-common -Wall -Wno-switch
+
+
 
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
 
-SRC = ./9cc
-NUM1 = 110
-NUM2 = 20
+default: 9cc
 
-default: compile
+9cc: $(OBJS)
+	$(CC) $(CFLAGS) -I./include -o $@ $^ $(LDFLAGS)
 
-run: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+asm:
+	$(CC) -S 9cc.s $^
 
-compile: 
-	$(CC) -o $(SRC) $(SRC).c
-
-asm: 
-	$(CC) -S $(SRC).s $(SRC).c
-
-test: compile 
+test: 9cc
 	bash ./test/9cc.sh
 
-.PHONY: run asm compile test
+clean:
+	rm *.o
+
+.PHONY: run asm 9cc clean test

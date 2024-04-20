@@ -23,3 +23,29 @@
 - 構文解析を行うもの
 - 空白文字を処理したい
 
+## 演算子の優先順位
+
+```C
+1        +    (1      +      1)
+            expr
+             |
+            mul: ["1", "+", "(1 + 1)"]
+  /          |    \
+primary     "+"   primary
+|            |       \
+|            |        \
+num         "+"      expr
+                       |
+                      mul: ["1", "+", "1"]
+                 /     |     \
+             primary  "+"   primary
+                |      |       \
+                |      |        \
+               num    "+"       num
+```
+
+```C
+  expr    = mul ("+" mul | "-" mul)*
+  mul     = primary ("*" primary | "/" primary)*
+  primary = num | "(" expr ")"
+```
