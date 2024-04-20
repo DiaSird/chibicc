@@ -22,5 +22,6 @@ assert() {
 assert 0 0 # expected 0, actual 127
 assert 42 42
 assert 0 "1+2+3+4+5+6+7+8+9+10-55"
+assert 0 "1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 - 55"
 
 echo OK
