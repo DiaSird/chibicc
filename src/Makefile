@@ -17,9 +17,10 @@ run: $(OBJS)
 compile: 
 	$(CC) -o $(SRC) $(SRC).c
 
-test: compile
+asm: 
+	$(CC) -S $(SRC).s $(SRC).c
+
+test: compile 
 	bash ./test/9cc.sh
 
-.PHONY: run compile test
-
-# command -v cc
+.PHONY: run asm compile test

@@ -26,18 +26,48 @@ struct Token {
 Token *token;
 
 // エラーを報告するための関数
+void error(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  exit(1);
+}
+
+// 入力プログラム
+char *user_input;
+
+// エラーを報告するための関数 (改善パターン)
 // printfと同じ引数を取る
 // ...: 可変長引数
-void error(char *fmt, ...) {
-  // va_list: type, ap: value
+// エラー箇所を報告する
+void error_at(char *loc, char *fmt, ...) {
   va_list ap;
-  va_start(ap, fmt); //
+  va_start(ap, fmt);
+
+  // エラーの場所を揃える
+  // ---------
+  //     ^----
+  // offset from start address = current position address - start position
+  // address
+  int pos = loc - user_input;
+  fprintf(stderr, "%s\n", user_input);
+  fprintf(stderr, "%*s", pos, " "); // pos個の空白を出力
+  fprintf(stderr, "^ ");
+
   // vfprintf() docs:
   // https://www.ibm.com/docs/ja/i/7.3?topic=functions-vfprintf-print-argument-data-stream
   // in Rust: format_arg!()
   // https://github.com/SARDONYX-sard/My-rCore-Tutorial-v3/blob/main/os/src/console.rs#L44
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
+
+  // debug
+  // fprintf(stderr, "pos = %d \n", pos);
+  // fprintf(stderr, "loc = %p\n", (void *)loc);
+  // fprintf(stderr, "user_input = %p\n", (void *)user_input);
+  // fprintf(stderr, "\n");
+
   exit(1);
 }
 
@@ -55,6 +85,7 @@ bool consume(char op) {
 void expect(char op) {
   if (token->kind != TK_RESERVED || token->str[0] != op)
     error("'%c'ではありません", op);
+  // error_at(token->str, "'%c'ではありません", op);
   token = token->next;
 }
 
@@ -63,6 +94,7 @@ void expect(char op) {
 int expect_number() {
   if (token->kind != TK_NUM)
     error("数ではありません");
+  // error_at(token->str, "数ではありません");
   int val = token->val;
   token = token->next;
   return val;
@@ -103,7 +135,9 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    error("トークナイズできません");
+    // エラーの場合、現在のトークンポインタを取得
+    char *error_token = p;
+    error_at(error_token, "トークナイズできません");
   }
 
   new_token(TK_EOF, cur, p);
@@ -116,8 +150,11 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  // ユーザー入力
+  user_input = argv[1];
+
   // トークナイズする
-  token = tokenize(argv[1]);
+  token = tokenize(user_input);
 
   // アセンブリの前半部分を出力
   printf(".intel_syntax noprefix\n");
