@@ -1,25 +1,16 @@
-# CC = gcc
-# CC = icx
-
-CFLAGS=-std=c11 -g -fno-common -Wall -Wno-switch
-
-
-
+CFLAGS=-std=c11 -g -fno-common
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
 
-default: 9cc
+chibicc: $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-9cc: $(OBJS)
-	$(CC) $(CFLAGS) -I./include -o $@ $^ $(LDFLAGS)
+$(OBJS): chibicc.h
 
-asm:
-	$(CC) -S 9cc.s $^
-
-test: 9cc
-	bash ./test/9cc.sh
+test: chibicc
+	./test.sh
 
 clean:
-	rm *.o
+	rm -f chibicc *.o *~ tmp*
 
-.PHONY: run asm 9cc clean test
+.PHONY: test clean
