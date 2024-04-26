@@ -17,7 +17,7 @@ static void pop(char *arg) {
 // It's an error if a given node does not reside in memory.
 static void gen_addr(Node *node) {
   if (node->kind == ND_VAR) {
-    // 'a' = 0, 'b' = 1, ..., 'z' = 25
+    // 'a' = 0, 'b' = 1, ..., 'z' = 25 
     int offset = (node->name - 'a' + 1) * 8;
     debug(__FILE__, __LINE__, "name = %c;offset= %d", node->name, offset);
     // https://ja.wikibooks.org/wiki/X86%E3%82%A2%E3%82%BB%E3%83%B3%E3%83%96%E3%83%A9/%E3%83%87%E3%83%BC%E3%82%BF%E8%BB%A2%E9%80%81%E5%91%BD%E4%BB%A4
@@ -25,12 +25,13 @@ static void gen_addr(Node *node) {
     //
     // |   address MAX  |
     // ...
-    // |   stack base   | <- stack base ptr
-    // |     stack      | 
-    // |     stack      | 
-    // |     stack      | 
-    // |     stack      | <- current stack ptr
+    // |   stack base   |
+    // |     stack a    | 
+    // |     stack b    | 
+    // |     stack c    | 
+    // |     stack d    |
     // ...
+    // |     stack z    | <- current stack ptr
     // |   address 0    |
     printf("  lea %d(%%rbp), %%rax\n", -offset);
     return;
@@ -118,7 +119,7 @@ void codegen(Node *node) {
   // Prologue (AT&T)
   printf("  push %%rbp\n");         // backup rbp
   printf("  mov %% rsp, %% rbp\n"); // base stack ptr = current stack pointer
-  printf("  sub $208, %%rsp\n");
+  printf("  sub $208, %%rsp\n"); // Allocate stack size for 26 variables in advance.
 
   for (Node *n = node; n; n = n->next) {
     gen_stmt(n);
