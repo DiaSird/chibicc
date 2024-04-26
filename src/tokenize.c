@@ -1,7 +1,24 @@
 #include "chibicc.h"
+#include "time.h"
+// 2024-04-19T16:01:21.421205Z DEBUG
+// crates\hkx_serde\src\bytes\deserializer.rs:362: class_header:
 
 // Input string
 static char *current_input;
+
+// Reports for debug.
+void debug(char* file, int line, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  char date[64];
+  time_t t = time(NULL);
+  strftime(date, sizeof(date), "%Y/%m/%d %a %H:%M:%S", localtime(&t));
+
+  fprintf(stderr, "[Debug: %s] %s:%d: ", date, file, line);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+}
 
 // Reports an error and exit.
 void error(char *fmt, ...) {
@@ -89,6 +106,13 @@ Token *tokenize(char *p) {
       // unsigned long
       cur->val = strtoul(p, &p, 10); // parse_str<Ulong>(&str)
       cur->len = p - q;
+      continue;
+    }
+
+    // Identifier
+    if ('a' <= *p && *p <= 'z') {
+      cur = cur->next = new_token(TK_IDENT, p, p + 1);
+      p++;
       continue;
     }
 

@@ -78,7 +78,10 @@ Vec<Token> -> Tree<Node>
 
 2-3. expr-stmt = expr ";"
 |
-1. expr = equality
+1-1. expr = assign
+
+1-2. assign = equality ("=" assign)?
+     (e.g. 1 = 1, a = 1)
 
 2. equality = relational ("==" relational | "!=" relational)*
 
@@ -91,10 +94,13 @@ Vec<Token> -> Tree<Node>
 6. unary = ("+" | "-") unary
       | primary
 
-7. primary = "(" expr ")" | num
+7. primary = "(" expr ")" | ident | num
 ```
 
 - x86_64
+
+[x86 Instruction Set Reference](https://c9x.me/x86/html/file_module_x86_id_288.html)
+[Arithmetic and Logic Instructions](https://www.ic.unicamp.br/~celio/mc404-2006/flags.html#:~:text=Parity%20Flag%20(PF)%20-%20this,odd%20number%20of%20one%20bits.)
 
 ```assembly
   .globl main
@@ -104,10 +110,10 @@ main:
   mov $2, %rax    // rax = 2
   pop %rdi        // rax = mem
   cmp %rdi, %rax  // rax == rdi -> set equal flag register
-  setle %al       //  al = less than equal result
+  setle %al       //  al = less or equal (Zero Flag=1 or SignFlag!=OverflowFlag).
   movzb %al, %rax // rax = al (bit extend with zero: 16bit -> 64bit)
   // この段階でスタックフレームはリターンアドレスのみ。
-  ret             // 複合命令で pop rax -> jmp rax
+  ret             // 複合命令で pop register & jmp register
 ```
 
 - 参考: RISC-V
