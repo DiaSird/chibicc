@@ -71,6 +71,13 @@ Vec<Token> -> Tree<Node>
 ![parse tree](img/parse_tree.png)
 
 ```EBNF
+|
+2-1. program = stmt*
+
+2-2. stmt = expr-stmt
+
+2-3. expr-stmt = expr ";"
+|
 1. expr = equality
 
 2. equality = relational ("==" relational | "!=" relational)*
