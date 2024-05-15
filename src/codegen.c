@@ -13,27 +13,34 @@ static void pop(char *arg) {
   depth--;
 }
 
+// Round up `n` to the nearest multiple of `align`. For instance,
+// align_to(5, 8) returns 8 and align_to(11, 8) returns 16.
+static int align_to(int n, int align) {
+  return (n + align - 1) / align * align;
+}
+
 // Compute the absolute address of a given node.
 // It's an error if a given node does not reside in memory.
 static void gen_addr(Node *node) {
   if (node->kind == ND_VAR) {
-    // 'a' = 0, 'b' = 1, ..., 'z' = 25 
-    int offset = (node->name - 'a' + 1) * 8;
-    debug(__FILE__, __LINE__, "name = %c;offset= %d", node->name, offset);
+    debug(__FILE__, __LINE__, "name = %s;offset= %d", node->var->name,
+          node->var->offset);
+
     // https://ja.wikibooks.org/wiki/X86%E3%82%A2%E3%82%BB%E3%83%B3%E3%83%96%E3%83%A9/%E3%83%87%E3%83%BC%E3%82%BF%E8%BB%A2%E9%80%81%E5%91%BD%E4%BB%A4
     // rax = rbp - offset
     //
     // |   address MAX  |
     // ...
     // |   stack base   |
-    // |     stack a    | 
-    // |     stack b    | 
-    // |     stack c    | 
+    // |     stack a    |
+    // |     stack b    |
+    // |     stack c    |
     // |     stack d    |
     // ...
     // |     stack z    | <- current stack ptr
     // |   address 0    |
-    printf("  lea %d(%%rbp), %%rax\n", -offset);
+    printf(" lea %d(%%rbp), %%rax\n", node->var->offset);
+
     return;
   }
 
@@ -112,16 +119,29 @@ static void gen_stmt(Node *node) {
   error("invalid statement");
 }
 
-void codegen(Node *node) {
+// Assign offsets to local variables.
+static void assign_lvar_offsets(Function *prog) {
+  int offset = 0;
+  for (Obj *var = prog->locals; var; var = var->next) {
+    offset += 8;
+    var->offset = -offset;
+  }
+  prog->stack_size = align_to(offset, 16);
+}
+
+void codegen(Function *prog) {
+  assign_lvar_offsets(prog);
+
   printf("  .globl main\n");
   printf("main:\n");
 
   // Prologue (AT&T)
   printf("  push %%rbp\n");         // backup rbp
   printf("  mov %% rsp, %% rbp\n"); // base stack ptr = current stack pointer
-  printf("  sub $208, %%rsp\n"); // Allocate stack size for 26 variables in advance.
+  // Allocate stack size for any variables
+  printf("  sub $%d, %%rsp\n", prog->stack_size);
 
-  for (Node *n = node; n; n = n->next) {
+  for (Node *n = prog->body; n; n = n->next) {
     gen_stmt(n);
     assert(depth == 0);
   }

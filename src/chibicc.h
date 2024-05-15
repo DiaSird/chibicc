@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -6,10 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct Node Node;
+
 //
 // tokenize.c
 //
 
+// Token
 typedef enum {
   TK_IDENT, // Identifiers
   TK_PUNCT, // Keywords or punctuators
@@ -27,7 +31,7 @@ struct Token {
   int len;        // Token length
 };
 
-void debug(char* file, int line, char *fmt, ...);
+void debug(char *file, int line, char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 void error_tok(Token *tok, char *fmt, ...);
@@ -38,7 +42,24 @@ Token *tokenize(char *input);
 //
 // parse.c
 //
+// Local variable
+typedef struct Obj Obj;
 
+struct Obj {
+  Obj *next;
+  char *name; // Variable name
+  int offset; // Offset from RBP
+};
+
+// Function
+typedef struct Function Function;
+struct Function {
+  Node *body;
+  Obj *locals;
+  int stack_size;
+};
+
+// AST node
 typedef enum {
   ND_ADD,       // +
   ND_SUB,       // -
@@ -56,20 +77,19 @@ typedef enum {
 } NodeKind;
 
 // AST node type
-typedef struct Node Node;
 struct Node {
   NodeKind kind; // Node kind
   Node *next;    // Next node
   Node *lhs;     // Left-hand side
   Node *rhs;     // Right-hand side
-  char name;     // Used if kind == ND_VAR
+  Obj *var;      // Used if kind == ND_VAR
   int val;       // Used if kind == ND_NUM
 };
 
-Node *parse(Token *tok);
+Function *parse(Token *tok);
 
 //
 // codegen.c
 //
 
-void codegen(Node *node);
+void codegen(Function *prog);
