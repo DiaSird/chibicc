@@ -100,7 +100,7 @@ Vec<Token> -> Tree<Node>
 - x86_64
 
 [x86 Instruction Set Reference](https://c9x.me/x86/html/file_module_x86_id_288.html)
-[Arithmetic and Logic Instructions](https://www.ic.unicamp.br/~celio/mc404-2006/flags.html#:~:text=Parity%20Flag%20(PF)%20-%20this,odd%20number%20of%20one%20bits.)
+[Arithmetic and Logic Instructions](<https://www.ic.unicamp.br/~celio/mc404-2006/flags.html#:~:text=Parity%20Flag%20(PF)%20-%20this,odd%20number%20of%20one%20bits.>)
 
 ```assembly
   .globl main
@@ -154,3 +154,51 @@ void f() {
   int b = 4;
 }
 ```
+
+## 複数文字列のローカル変数 (5/15)
+
+```assembly
+  .globl main
+  .text
+main:
+  push %rbp
+  mov %rsp, %rbp
+
+  sub $16, %rsp
+ lea -16(%rbp), %rax // %rbp - 16 -> %rax
+  push %rax
+  mov $3, %rax
+  pop %rdi
+  mov %rax, (%rdi)
+ lea -8(%rbp), %rax
+  push %rax
+  mov $5, %rax
+  pop %rdi
+  mov %rax, (%rdi)
+ lea -8(%rbp), %rax
+  mov (%rax), %rax
+  push %rax
+ lea -16(%rbp), %rax
+  mov (%rax), %rax
+  pop %rdi
+  add %rdi, %rax
+
+  mov %rbp, %rsp
+  pop %rbp
+  ret
+
+.rodata
+hello:
+  .ascii "hello"
+```
+
+- コード内の読み方
+
+- To Do (ここで、内部実装を理解しておく)
+
+1. アセンブリ (tmp.S)を読む
+2. chibicc.h を読む
+3. main.c を読む
+4. tokenize.c を読む
+5. parse.c を読む
+6. codegen.c を読む
