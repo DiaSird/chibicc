@@ -12,7 +12,10 @@ $(OBJS): chibicc.h
 test: chibicc
 	./test.sh
 
+ci: chibicc
+	./test_ci.sh
+
 clean:
 	rm -f chibicc *.o *~ tmp*
 
-.PHONY: test clean
+.PHONY: ci test clean

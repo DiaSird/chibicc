@@ -3,6 +3,7 @@ on:
   push:
     branches: ["my-chibicc"]
   pull_request: {}
+  workflow_dispatch:
 jobs:
   test:
     name: Test
@@ -10,4 +11,4 @@ jobs:
     steps:
       - uses: "actions/checkout@v4"
       - name: Run Test
-        run: cd ./src;make test
+        run: cd ./src;make ci
