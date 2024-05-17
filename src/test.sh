@@ -102,6 +102,6 @@ echo ------------------------ Original Tests ----------------------------------
 # arrange test
 n=1000                                 # 0 ~ 8
 sum=$((n * (n + 1) * (2 * n + 1) / 6)) # sum(n^2) 0 ~ 255
-assert 1 "{ int j = 0; int sum = $sum; for (int i=0; i<=$n; i=i+1) {j = j + i * i;} if (sum==j) {return 1;} return 0; }"
+assert 1 "{ int i; int j = 0; int sum = $sum; for (i=0; i<=$n; i=i+1) {j = j + i * i;} if (sum==j) {return 1;} return 0; }"
 
 echo OK
