@@ -143,13 +143,14 @@ static void gen_stmt(Node *node) {
     int c = count();
 
     // init
-    gen_stmt(node->init);
+    if (node->init)
+      gen_stmt(node->init);
     printf(".L.begin.%d:\n", c);
 
     // condition
     if (node->cond) {
       gen_expr(node->cond);
-      printf("  cmp $0, %%rax\n");  // if false -> end
+      printf("  cmp $0, %%rax\n"); // if false -> end
       printf("  je  .L.end.%d\n", c);
     }
     gen_stmt(node->then);

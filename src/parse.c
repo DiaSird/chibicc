@@ -67,11 +67,15 @@ static Obj *new_lvar(char *name) {
   return var;
 }
 
+//* EBNF statement
+// ```EBNF
 // stmt = "return" expr ";"
-//      | "for" "(" expr-stmt expr? ";" expr? ")" stmt
 //      | "if" "(" expr ")" stmt ("else" stmt)?
+//      | "for" "(" expr-stmt expr? ";" expr? ")" stmt
+//      | "while" "(" expr ")" stmt
 //      | "{" compound-stmt
 //      | expr-stmt
+// ```
 static Node *stmt(Token **rest, Token *tok) {
   // "return" statement
   if (equal(tok, "return")) {
@@ -108,6 +112,15 @@ static Node *stmt(Token **rest, Token *tok) {
       node->inc = expr(&tok, tok);
     tok = skip(tok, ")");
 
+    node->then = stmt(rest, tok);
+    return node;
+  }
+
+  if (equal(tok, "while")) {
+    Node *node = new_node(ND_FOR);
+    tok = skip(tok->next, "(");
+    node->cond = expr(&tok, tok);
+    tok = skip(tok, ")");
     node->then = stmt(rest, tok);
     return node;
   }
