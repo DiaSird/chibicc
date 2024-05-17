@@ -21,6 +21,7 @@
 // accumulated to this list.
 Obj *locals;
 
+static Node *declaration(Token **rest, Token *tok);
 static Node *compound_stmt(Token **rest, Token *tok);
 static Node *stmt(Token **rest, Token *tok);
 static Node *expr_stmt(Token **rest, Token *tok);
@@ -78,12 +79,74 @@ static Node *new_var_node(Obj *var, Token *tok) {
   return node;
 }
 
-static Obj *new_lvar(char *name) {
+static Obj *new_lvar(char *name, Type *ty) {
   Obj *var = calloc(1, sizeof(Obj));
   var->name = name;
+  var->ty = ty;
   var->next = locals;
   locals = var;
   return var;
+}
+
+static char *get_ident(Token *tok) {
+  if (tok->kind != TK_IDENT)
+    error_tok(tok, "expected an identifier");
+  return strndup(tok->loc, tok->len);
+}
+
+// declspec = "int"
+static Type *declspec(Token **rest, Token *tok) {
+  *rest = skip(tok, "int");
+  return ty_int;
+}
+
+// declarator = "*"* ident
+static Type *declarator(Token **rest, Token *tok, Type *ty) {
+  while (consume(&tok, tok, "*"))
+    ty = pointer_to(ty);
+
+  if (tok->kind != TK_IDENT)
+    error_tok(tok, "expected a variable name");
+
+  ty->name = tok;
+  *rest = tok->next;
+  return ty;
+}
+
+// declaration = declspec (declarator ("=" expr)? ("," declarator ("="
+// expr)?)*)? ";"
+static Node *declaration(Token **rest, Token *tok) {
+  // int
+  Type *basety = declspec(&tok, tok);
+
+  Node head = {};
+  Node *cur = &head;
+  int i = 0;
+
+  // ...;
+  while (!equal(tok, ";")) {
+    if (i++ > 0)
+      tok = skip(tok, ",");
+
+    // abc...
+    Type *ty = declarator(&tok, tok, basety);
+    Obj *var = new_lvar(get_ident(ty->name), ty);
+
+    // =
+    if (!equal(tok, "="))
+      continue;
+
+    // new variable (ex.) 3) -> int a = 3;
+    Node *lhs = new_var_node(var, ty->name);
+    Node *rhs = assign(&tok, tok->next);
+    Node *node = new_binary(ND_ASSIGN, lhs, rhs, tok);
+    cur = cur->next = new_unary(ND_EXPR_STMT, node, tok);
+  }
+
+  Node *node = new_node(ND_BLOCK, tok);
+  node->body = head.next;
+  *rest = tok->next;
+  return node;
 }
 
 //* EBNF statement
@@ -151,13 +214,16 @@ static Node *stmt(Token **rest, Token *tok) {
   return expr_stmt(rest, tok);
 }
 
-// compound-stmt = stmt* "}"
+// compound-stmt = (declaration | stmt)* "}"
 static Node *compound_stmt(Token **rest, Token *tok) {
   Node head = {0};
   Node *cur = &head;
 
   while (!equal(tok, "}")) {
-    cur = cur->next = stmt(&tok, tok);
+    if (equal(tok, "int"))
+      cur = cur->next = declaration(&tok, tok);
+    else
+      cur = cur->next = stmt(&tok, tok);
     add_type(cur);
   }
 
@@ -366,18 +432,23 @@ static Node *unary(Token **rest, Token *tok) {
 
 // primary = "(" expr ")" | ident | num
 static Node *primary(Token **rest, Token *tok) {
+  // (...)
   if (equal(tok, "(")) {
     Node *node = expr(&tok, tok->next);
     *rest = skip(tok, ")");
     return node;
   }
 
+  // check all local variables
   if (tok->kind == TK_IDENT) {
     Obj *var = find_var(tok);
+
+    // if no defined variable
     if (!var)
       // strndup: only UNIX (POSIX fn)
-      var = new_lvar(strndup(tok->loc, tok->len));
+      error_tok(tok, "undefined variable");
     *rest = tok->next;
+
     return new_var_node(var, tok);
   }
 
