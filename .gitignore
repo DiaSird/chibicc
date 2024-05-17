@@ -8,3 +8,7 @@
 /chibicc
 /test/*.exe
 /stage2
+
+# binary files
+chibicc
+tmp

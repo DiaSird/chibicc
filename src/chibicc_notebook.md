@@ -1,5 +1,11 @@
 # C コンパイラ入門
 
+## URL
+
+- [history](https://github.com/rui314/chibicc/commits/main?after=90d1f7f199cc55b13c7fdb5839d1409806633fdb+306)
+
+- [ref commit](https://github.com/rui314/chibicc/tree/725badfb494544b7c7f1d4c4690b9bc033c6d051)
+
 ## 整数 1 個のコンパイル
 
 - コンパイラの概要
@@ -49,10 +55,6 @@ num         "+"      expr
   mul     = primary ("*" primary | "/" primary)*
   primary = num | "(" expr ")"
 ```
-
-- [history](https://github.com/rui314/chibicc/commits/main?after=90d1f7f199cc55b13c7fdb5839d1409806633fdb+306)
-
-- [ref commit](https://github.com/rui314/chibicc/tree/725badfb494544b7c7f1d4c4690b9bc033c6d051)
 
 ## パーサー
 
