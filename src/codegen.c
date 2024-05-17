@@ -32,18 +32,20 @@ static void gen_addr(Node *node) {
           node->var->offset);
 
     // https://ja.wikibooks.org/wiki/X86%E3%82%A2%E3%82%BB%E3%83%B3%E3%83%96%E3%83%A9/%E3%83%87%E3%83%BC%E3%82%BF%E8%BB%A2%E9%80%81%E5%91%BD%E4%BB%A4
+    //* stack condition
     // rax = rbp - offset
     //
-    // |   address MAX  |
-    // ...
-    // |   stack base   |
-    // |     stack a    |
+    // |    address 0   |
+    //         ...
+    // |     stack a    | <- current stack ptr(%rsp)
     // |     stack b    |
     // |     stack c    |
     // |     stack d    |
-    // ...
-    // |     stack z    | <- current stack ptr
-    // |   address 0    |
+    //         ...
+    // |     stack z    |
+    // |   stack base   | <- %rbp == %rsp -> mov %rbp, %rsp
+    // |   address MAX  | <- bottom
+
     printf(" lea %d(%%rbp), %%rax\n", node->var->offset);
 
     return;
