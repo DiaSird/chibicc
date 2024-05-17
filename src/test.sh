@@ -2,7 +2,7 @@
 assert() {
   expected="$1"
   input="$2"
-  ./chibicc "$input" > tmp.s || exit
+  ./chibicc "$input" >tmp.s || exit
   gcc -static -o tmp tmp.s
   ./tmp
   actual="$?"
@@ -58,5 +58,12 @@ assert 3 '{ 1; 2; return 3; }'
 
 assert 3 '{ {1; {2;} return 3;} }'
 assert 5 '{ ;;; return 5; }'
+
+assert 3 '{ if (0) return 2; return 3; }'
+assert 3 '{ if (1-1) return 2; return 3; }'
+assert 2 '{ if (1) return 2; return 3; }'
+assert 2 '{ if (2-1) return 2; return 3; }'
+assert 4 '{ if (0) { 1; 2; return 3; } else { return 4; } }'
+assert 3 '{ if (1) { 1; 2; return 3; } else { return 4; } }'
 
 echo OK
