@@ -122,13 +122,42 @@ static void gen_stmt(Node *node) {
   case ND_IF: {
     int c = count();
     gen_expr(node->cond);
+
+    // condition
     printf("  cmp $0, %%rax\n");
     printf("  je  .L.else.%d\n", c);
+
+    // then
     gen_stmt(node->then);
     printf("  jmp .L.end.%d\n", c);
     printf(".L.else.%d:\n", c);
+
+    // else
     if (node->els)
       gen_stmt(node->els);
+    printf(".L.end.%d:\n", c);
+    return;
+  }
+
+  case ND_FOR: {
+    int c = count();
+
+    // init
+    gen_stmt(node->init);
+    printf(".L.begin.%d:\n", c);
+
+    // condition
+    if (node->cond) {
+      gen_expr(node->cond);
+      printf("  cmp $0, %%rax\n");  // if false -> end
+      printf("  je  .L.end.%d\n", c);
+    }
+    gen_stmt(node->then);
+
+    // increment
+    if (node->inc)
+      gen_expr(node->inc);
+    printf("  jmp .L.begin.%d\n", c);
     printf(".L.end.%d:\n", c);
     return;
   }
