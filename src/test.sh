@@ -71,10 +71,19 @@ assert 55 '{ i=0; j=0; for (i=0; i<=10; i=i+1) j=i+j; return j; }'
 assert 3 '{ for (;;) {return 3;} return 5; }'
 
 # arrange test
-n=1000 # 0 ~ 8
+n=1000                                 # 0 ~ 8
 sum=$((n * (n + 1) * (2 * n + 1) / 6)) # sum(n^2) 0 ~ 255
 assert 1 "{ i = 0; j = 0; sum = $sum; for (i=0; i<=$n; i=i+1) {j = j + i * i;} if (sum==j) {return 1;} return 0; }"
 
 assert 10 '{ i=0; while(i<10) { i=i+1; } return i; }'
+
+assert 3 '{ x=3; return *&x; }'
+assert 3 '{ x=3; y=&x; z=&y; return **z; }'
+assert 5 '{ x=3; y=5; return *(&x+8); }'
+assert 3 '{ x=3; y=5; return *(&y-8); }'
+assert 5 '{ x=3; y=&x; *y=5; return x; }'
+assert 7 '{ x=3; y=5; *(&x+8)=7; return y; }'
+assert 7 '{ x=3; y=5; *(&y-8)=7; return x; }'
+assert 1 '{ x=3; y=&x; if (*y=3) {return 1;} return 0; }'
 
 echo OK
