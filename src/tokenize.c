@@ -114,6 +114,7 @@ static bool is_keyword(Token *tok) {
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
     if (equal(tok, kw[i]))
       return true;
+    
   return false;
 }
 
