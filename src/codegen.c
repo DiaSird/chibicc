@@ -3,6 +3,9 @@
 
 static int depth;
 
+// reg call rank for 64 bit
+static char *argreg[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+
 static void gen_expr(Node *node);
 
 static int count(void) {
@@ -89,10 +92,20 @@ static void gen_expr(Node *node) {
     pop("%rdi");
     printf("  mov %%rax, (%%rdi)\n");
     return;
-  case ND_FUNCALL:
+  case ND_FUNCALL: {
+    int nargs = 0;
+    for (Node *arg = node->args; arg; arg = arg->next) {
+      gen_expr(arg);
+      push();
+      nargs++;
+    }
+
+    for (int i = nargs - 1; i >= 0; i--)
+      pop(argreg[i]);
     printf("  mov $0, %%rax\n");
     printf("  call %s\n", node->funcname);
     return;
+  }
   }
 
   gen_expr(node->rhs);
