@@ -33,6 +33,7 @@ static Node *relational(Token **rest, Token *tok);
 static Node *assign(Token **rest, Token *tok);
 static Node *add(Token **rest, Token *tok);
 static Node *mul(Token **rest, Token *tok);
+static Node *postfix(Token **rest, Token *tok);
 static Node *unary(Token **rest, Token *tok);
 static Node *primary(Token **rest, Token *tok);
 
@@ -111,7 +112,7 @@ static Type *declspec(Token **rest, Token *tok) {
 // func-params = (param ("," param)*)? ")"
 // param       = declspec declarator
 static Type *func_params(Token **rest, Token *tok, Type *ty) {
-  Type head = {};
+  Type head = {0};
   Type *cur = &head;
 
   while (!equal(tok, ")")) {
@@ -137,7 +138,8 @@ static Type *type_suffix(Token **rest, Token *tok, Type *ty) {
 
   if (equal(tok, "[")) {
     int sz = get_number(tok->next);
-    *rest = skip(tok->next->next, "]");
+    tok = skip(tok->next->next, "]");
+    ty = type_suffix(rest, tok, ty);
     return array_of(ty, sz);
   }
 
@@ -262,6 +264,8 @@ static Node *stmt(Token **rest, Token *tok) {
 
 // compound-stmt = (declaration | stmt)* "}"
 static Node *compound_stmt(Token **rest, Token *tok) {
+  Node *node = new_node(ND_BLOCK, tok);
+
   Node head = {0};
   Node *cur = &head;
 
@@ -273,7 +277,6 @@ static Node *compound_stmt(Token **rest, Token *tok) {
     add_type(cur);
   }
 
-  Node *node = new_node(ND_BLOCK, tok);
   node->body = head.next;
   *rest = tok->next;
   return node;
@@ -459,7 +462,7 @@ static Node *mul(Token **rest, Token *tok) {
 }
 
 // unary = ("+" | "-" | "*" | "&") unary
-//       | primary
+//       | postfix
 static Node *unary(Token **rest, Token *tok) {
   if (equal(tok, "+"))
     return unary(rest, tok->next);
@@ -473,7 +476,22 @@ static Node *unary(Token **rest, Token *tok) {
   if (equal(tok, "*"))
     return new_unary(ND_DEREF, unary(rest, tok->next), tok);
 
-  return primary(rest, tok);
+  return postfix(rest, tok);
+}
+
+// postfix = primary ("[" expr "]")*
+static Node *postfix(Token **rest, Token *tok) {
+  Node *node = primary(&tok, tok);
+
+  while (equal(tok, "[")) {
+    // x[y] is short for *(x+y)
+    Token *start = tok;
+    Node *idx = expr(&tok, tok->next);
+    tok = skip(tok, "]");
+    node = new_unary(ND_DEREF, new_add(node, idx, start), start);
+  }
+  *rest = tok;
+  return node;
 }
 
 // funcall = ident "(" (assign ("," assign)*)? ")"

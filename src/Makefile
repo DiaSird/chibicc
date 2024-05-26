@@ -17,4 +17,7 @@ ci: test
 clean:
 	rm -f chibicc *.o *~ tmp*
 
-.PHONY: ci test clean
+undo:
+	git reset --soft HEAD~1
+
+.PHONY: ci test clean undo
