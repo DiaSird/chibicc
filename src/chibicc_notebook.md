@@ -6,10 +6,17 @@
 
 - [ref commit](https://github.com/rui314/chibicc/tree/725badfb494544b7c7f1d4c4690b9bc033c6d051)
 
-## 整数 1 個のコンパイル
+## Shell の Git 権限追加
+
+```powershell
+Get-ChildItem -Recurse -Filter *.sh | ForEach-Object { git update-index --add --chmod=+x "$($_.FullName)" }
+```
+
+## コンパイラ入門
 
 - コンパイラの概要
   c 言語 -> (IL: LLVM の中間言語) -> .s (assembly) ファイル -> .o (object) ファイル -> リンク -> バイナリ
+- [LLVM](https://github.com/llvm/llvm-project)
 
 ## トークナイズ
 

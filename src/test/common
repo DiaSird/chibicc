@@ -9,3 +9,7 @@ void assert(int expected, int actual, char *code) {
     exit(1);
   }
 }
+
+void int_printf(char *str, int num) {
+  printf("%s %d\n", str, num);
+}
