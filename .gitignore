@@ -6,7 +6,7 @@
 /tmp*
 /thirdparty
 /chibicc
-/test/*.exe
+/src/test/*.exe
 /stage2
 
 # binary files

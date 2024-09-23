@@ -1,5 +1,6 @@
 --pedantic-errors
 -I./include/
+-I./test/
 -std=c11
 -Wall
 -Wextra

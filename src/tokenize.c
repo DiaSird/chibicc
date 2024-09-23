@@ -1,25 +1,10 @@
 #include "chibicc.h"
-#include <time.h>
 
-// 2024-04-19T16:01:21.421205Z DEBUG
-// crates\hkx_serde\src\bytes\deserializer.rs:362: class_header:
+// Input filename
+static char *current_filename;
 
 // Input string
 static char *current_input;
-
-// Reports for debug.
-void debug(char *file, int line, char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-
-  char date[64];
-  time_t t = time(NULL);
-  strftime(date, sizeof(date), "%Y/%m/%d %a %H:%M:%S", localtime(&t));
-
-  fprintf(stderr, "[Debug: %s] %s:%d: ", date, file, line);
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-}
 
 // Reports an error and exit.
 void error(char *fmt, ...) {
@@ -30,10 +15,33 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-// Reports an error location and exit.
+// Reports an error message in the following format and exit.
+//
+// foo.c:10: x = y + 1;
+//               ^ <error message here>
 static void verror_at(char *loc, char *fmt, va_list ap) {
-  int pos = loc - current_input;
-  fprintf(stderr, "%s\n", current_input);
+  // Find a line containing `loc`.
+  char *line = loc;
+  while (current_input < line && line[-1] != '\n')
+    line--;
+
+  char *end = loc;
+  while (*end != '\n')
+    end++;
+
+  // Get a line number.
+  int line_no = 1;
+  for (char *p = current_input; p < line; p++)
+    if (*p == '\n')
+      line_no++;
+
+  // Print out the line.
+  int indent = fprintf(stderr, "%s:%d: ", current_filename, line_no);
+  fprintf(stderr, "%.*s\n", (int)(end - line), line);
+
+  // Show the error message.
+  int pos = loc - line + indent;
+
   fprintf(stderr, "%*s", pos, ""); // print pos spaces.
   fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
@@ -65,14 +73,11 @@ Token *skip(Token *tok, char *op) {
   return tok->next;
 }
 
-// fn consume
 bool consume(Token **rest, Token *tok, char *str) {
-  // token == expected str
   if (equal(tok, str)) {
     *rest = tok->next;
     return true;
   }
-
   *rest = tok;
   return false;
 }
@@ -90,13 +95,21 @@ static bool startswith(char *p, char *q) {
   return strncmp(p, q, strlen(q)) == 0;
 }
 
-// Returns true if c is valid as the "first" character of an identifier.
+// Returns true if c is valid as the first character of an identifier.
 static bool is_ident1(char c) {
   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_';
 }
 
-// Returns true if c is valid as a "non-first" character of an identifier.
+// Returns true if c is valid as a non-first character of an identifier.
 static bool is_ident2(char c) { return is_ident1(c) || ('0' <= c && c <= '9'); }
+
+static int from_hex(char c) {
+  if ('0' <= c && c <= '9')
+    return c - '0';
+  if ('a' <= c && c <= 'f')
+    return c - 'a' + 10;
+  return c - 'A' + 10;
+}
 
 // Read a punctuator token from p and returns its length.
 static int read_punct(char *p) {
@@ -107,7 +120,6 @@ static int read_punct(char *p) {
   return ispunct(*p) ? 1 : 0;
 }
 
-// check keywords
 static bool is_keyword(Token *tok) {
   static char *kw[] = {
       "return", "if", "else", "for", "while", "int", "sizeof", "char",
@@ -116,18 +128,98 @@ static bool is_keyword(Token *tok) {
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++)
     if (equal(tok, kw[i]))
       return true;
-
   return false;
 }
 
-static Token *read_string_literal(char *start) {
-  char *p = start + 1;
-  for (; *p != '"'; p++)
+static int read_escaped_char(char **new_pos, char *p) {
+  if ('0' <= *p && *p <= '7') {
+    // Read an octal number.
+    int c = *p++ - '0';
+    if ('0' <= *p && *p <= '7') {
+      c = (c << 3) + (*p++ - '0');
+      if ('0' <= *p && *p <= '7')
+        c = (c << 3) + (*p++ - '0');
+    }
+    *new_pos = p;
+    return c;
+  }
+
+  if (*p == 'x') {
+    // Read a hexadecimal number.
+    p++;
+    if (!isxdigit(*p))
+      error_at(p, "invalid hex escape sequence");
+
+    int c = 0;
+    for (; isxdigit(*p); p++)
+      c = (c << 4) + from_hex(*p);
+    *new_pos = p;
+    return c;
+  }
+
+  *new_pos = p + 1;
+
+  // Escape sequences are defined using themselves here. E.g.
+  // '\n' is implemented using '\n'. This tautological definition
+  // works because the compiler that compiles our compiler knows
+  // what '\n' actually is. In other words, we "inherit" the ASCII
+  // code of '\n' from the compiler that compiles our compiler,
+  // so we don't have to teach the actual code here.
+  //
+  // This fact has huge implications not only for the correctness
+  // of the compiler but also for the security of the generated code.
+  // For more info, read "Reflections on Trusting Trust" by Ken Thompson.
+  // https://github.com/rui314/chibicc/wiki/thompson1984.pdf
+  switch (*p) {
+  case 'a':
+    return '\a';
+  case 'b':
+    return '\b';
+  case 't':
+    return '\t';
+  case 'n':
+    return '\n';
+  case 'v':
+    return '\v';
+  case 'f':
+    return '\f';
+  case 'r':
+    return '\r';
+  // [GNU] \e for the ASCII escape character is a GNU C extension.
+  case 'e':
+    return 27;
+  default:
+    return *p;
+  }
+}
+
+// Find a closing double-quote.
+static char *string_literal_end(char *p) {
+  char *start = p;
+  for (; *p != '"'; p++) {
     if (*p == '\n' || *p == '\0')
       error_at(start, "unclosed string literal");
-  Token *tok = new_token(TK_STR, start, p + 1);
-  tok->ty = array_of(ty_char, p - start);
-  tok->str = strndup(start + 1, p - start - 1);
+    if (*p == '\\')
+      p++;
+  }
+  return p;
+}
+
+static Token *read_string_literal(char *start) {
+  char *end = string_literal_end(start + 1);
+  char *buf = calloc(1, end - start);
+  int len = 0;
+
+  for (char *p = start + 1; p < end;) {
+    if (*p == '\\')
+      buf[len++] = read_escaped_char(&p, p + 1);
+    else
+      buf[len++] = *p++;
+  }
+
+  Token *tok = new_token(TK_STR, start, end + 1);
+  tok->ty = array_of(ty_char, len + 1);
+  tok->str = buf;
   return tok;
 }
 
@@ -138,12 +230,30 @@ static void convert_keywords(Token *tok) {
 }
 
 // Tokenize a given string and returns new tokens.
-Token *tokenize(char *p) {
+static Token *tokenize(char *filename, char *p) {
+  current_filename = filename;
   current_input = p;
-  Token head = {0};
+  Token head = {};
   Token *cur = &head;
 
   while (*p) {
+    // Skip line comments.
+    if (startswith(p, "//")) {
+      p += 2;
+      while (*p != '\n')
+        p++;
+      continue;
+    }
+
+    // Skip block comments.
+    if (startswith(p, "/*")) {
+      char *q = strstr(p + 2, "*/");
+      if (!q)
+        error_at(p, "unclosed block comment");
+      p = q + 2;
+      continue;
+    }
+
     // Skip whitespace characters.
     if (isspace(*p)) {
       p++;
@@ -154,8 +264,7 @@ Token *tokenize(char *p) {
     if (isdigit(*p)) {
       cur = cur->next = new_token(TK_NUM, p, p);
       char *q = p;
-      // unsigned long
-      cur->val = strtoul(p, &p, 10); // parse_str<Ulong>(&str)
+      cur->val = strtoul(p, &p, 10);
       cur->len = p - q;
       continue;
     }
@@ -192,3 +301,43 @@ Token *tokenize(char *p) {
   convert_keywords(head.next);
   return head.next;
 }
+
+// Returns the contents of a given file.
+static char *read_file(char *path) {
+  FILE *fp;
+
+  if (strcmp(path, "-") == 0) {
+    // By convention, read from stdin if a given filename is "-".
+    fp = stdin;
+  } else {
+    fp = fopen(path, "r");
+    if (!fp)
+      error("cannot open %s: %s", path, strerror(errno));
+  }
+
+  char *buf;
+  size_t buflen;
+  FILE *out = open_memstream(&buf, &buflen);
+
+  // Read the entire file.
+  for (;;) {
+    char buf2[4096];
+    int n = fread(buf2, 1, sizeof(buf2), fp);
+    if (n == 0)
+      break;
+    fwrite(buf2, 1, n, out);
+  }
+
+  if (fp != stdin)
+    fclose(fp);
+
+  // Make sure that the last line is properly terminated with '\n'.
+  fflush(out);
+  if (buflen == 0 || buf[buflen - 1] != '\n')
+    fputc('\n', out);
+  fputc('\0', out);
+  fclose(out);
+  return buf;
+}
+
+Token *tokenize_file(char *path) { return tokenize(path, read_file(path)); }

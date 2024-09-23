@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -13,6 +14,7 @@ typedef struct Node Node;
 //
 // strings.c
 //
+
 char *format(char *fmt, ...);
 
 //
@@ -22,7 +24,7 @@ char *format(char *fmt, ...);
 // Token
 typedef enum {
   TK_IDENT,   // Identifiers
-  TK_PUNCT,   // Keywords or punctuators
+  TK_PUNCT,   // Punctuators
   TK_KEYWORD, // Keywords
   TK_STR,     // String literals
   TK_NUM,     // Numeric literals
@@ -41,21 +43,20 @@ struct Token {
   char *str;      // String literal contents including terminating '\0'
 };
 
-void debug(char *file, int line, char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 void error_tok(Token *tok, char *fmt, ...);
 bool equal(Token *tok, char *op);
 Token *skip(Token *tok, char *op);
 bool consume(Token **rest, Token *tok, char *str);
-Token *tokenize(char *input);
+Token *tokenize_file(char *filename);
 
 //
 // parse.c
 //
+
 // Variable or function
 typedef struct Obj Obj;
-
 struct Obj {
   Obj *next;
   char *name;    // Variable name
@@ -98,6 +99,7 @@ typedef enum {
   ND_BLOCK,     // { ... }
   ND_FUNCALL,   // Function call
   ND_EXPR_STMT, // Expression statement
+  ND_STMT_EXPR, // Statement expression
   ND_VAR,       // Variable
   ND_NUM,       // Integer
 } NodeKind;
@@ -106,25 +108,26 @@ typedef enum {
 struct Node {
   NodeKind kind; // Node kind
   Node *next;    // Next node
+  Type *ty;      // Type, e.g. int or pointer to int
+  Token *tok;    // Representative token
 
-  Type *ty;   // Type, e.g. int or pointer to int
-  Token *tok; // Representative token
-  Node *lhs;  // Left-hand side
-  Node *rhs;  // Right-hand side
+  Node *lhs; // Left-hand side
+  Node *rhs; // Right-hand side
 
   // "if" or "for" statement
   Node *cond;
   Node *then;
   Node *els;
-  Node *init; // for (init; cond; inc) {}
-  Node *inc;  // increment
+  Node *init;
+  Node *inc;
 
-  // Block
+  // Block or statement expression
   Node *body;
 
   // Function call
   char *funcname;
   Node *args;
+
   Obj *var; // Used if kind == ND_VAR
   int val;  // Used if kind == ND_NUM
 };
@@ -138,8 +141,8 @@ Obj *parse(Token *tok);
 typedef enum {
   TY_CHAR,
   TY_INT,
-  TY_FUNC,
   TY_PTR,
+  TY_FUNC,
   TY_ARRAY,
 } TypeKind;
 
@@ -183,4 +186,10 @@ void add_type(Node *node);
 // codegen.c
 //
 
-void codegen(Obj *prog);
+void codegen(Obj *prog, FILE *out);
+
+//
+// debug.c
+//
+
+void debug(char *file, int line, char *fmt, ...);

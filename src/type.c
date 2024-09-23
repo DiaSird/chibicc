@@ -3,8 +3,9 @@
 Type *ty_char = &(Type){TY_CHAR, 1};
 Type *ty_int = &(Type){TY_INT, 8};
 
-// check integer
-bool is_integer(Type *ty) { return ty->kind == TY_CHAR || ty->kind == TY_INT; }
+bool is_integer(Type *ty) {
+  return ty->kind == TY_CHAR || ty->kind == TY_INT;
+}
 
 Type *copy_type(Type *ty) {
   Type *ret = calloc(1, sizeof(Type));
@@ -14,7 +15,7 @@ Type *copy_type(Type *ty) {
 
 Type *pointer_to(Type *base) {
   Type *ty = calloc(1, sizeof(Type));
-  ty->kind = TY_PTR; // pointer (any type)
+  ty->kind = TY_PTR;
   ty->size = 8;
   ty->base = base;
   return ty;
@@ -75,19 +76,30 @@ void add_type(Node *node) {
     node->ty = ty_int;
     return;
   case ND_VAR:
-    node->ty = node->var->ty; // ref. parse.c (new_lvar)
+    node->ty = node->var->ty;
     return;
-  case ND_ADDR: // address
+  case ND_ADDR:
     if (node->lhs->ty->kind == TY_ARRAY)
       node->ty = pointer_to(node->lhs->ty->base);
     else
       node->ty = pointer_to(node->lhs->ty);
     return;
-  case ND_DEREF: // dereference
+  case ND_DEREF:
     if (!node->lhs->ty->base)
       error_tok(node->tok, "invalid pointer dereference");
     node->ty = node->lhs->ty->base;
-
+    return;
+  case ND_STMT_EXPR:
+    if (node->body) {
+      Node *stmt = node->body;
+      while (stmt->next)
+        stmt = stmt->next;
+      if (stmt->kind == ND_EXPR_STMT) {
+        node->ty = stmt->lhs->ty;
+        return;
+      }
+    }
+    error_tok(node->tok, "statement expression returning void is not supported");
     return;
   }
 }
