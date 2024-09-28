@@ -41,6 +41,8 @@ struct Token {
   int len;        // Token length
   Type *ty;       // Used if TK_STR
   char *str;      // String literal contents including terminating '\0'
+
+  int line_no; // Line number
 };
 
 void error(char *fmt, ...);
@@ -187,9 +189,3 @@ void add_type(Node *node);
 //
 
 void codegen(Obj *prog, FILE *out);
-
-//
-// debug.c
-//
-
-void debug(char *file, int line, char *fmt, ...);

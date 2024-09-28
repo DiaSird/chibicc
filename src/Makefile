@@ -5,7 +5,7 @@ OBJS=$(SRCS:.c=.o)
 TEST_SRCS=$(wildcard test/*.c)
 TESTS=$(TEST_SRCS:.c=.exe)
 
-default: test
+default: wsl
 
 chibicc: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
@@ -18,9 +18,12 @@ test/%.exe: chibicc test/%.c
 
 test: $(TESTS)
 	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
-	test/driver.sh
+
+wsl: test
+	bash ./test/driver.sh
 
 ci: test
+	test/driver.sh
 
 undo:
 	git reset --soft HEAD~1
